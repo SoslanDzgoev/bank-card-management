@@ -10,6 +10,10 @@ import org.springframework.stereotype.Component;
 import java.security.Key;
 import java.util.Date;
 
+/**
+ * Компонент для работы с JWT токенами.
+ * Отвечает за генерацию, валидацию и разбор токенов.
+ */
 @Component
 public class JwtTokenProvider {
 
@@ -19,10 +23,15 @@ public class JwtTokenProvider {
     public JwtTokenProvider(
             @Value("${app.jwt.secret}") String secret,
             @Value("${app.jwt.expiration-ms}") long expirationMs) {
+        // Создаём ключ подписи из секретной строки (минимум 32 символа для HS256)
         this.signingKey = Keys.hmacShaKeyFor(secret.getBytes());
         this.expirationMs = expirationMs;
     }
 
+    /**
+     * Генерирует JWT токен для аутентифицированного пользователя.
+     * В качестве subject (sub) используется email пользователя.
+     */
     public String generateToken(Authentication authentication) {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         Date now = new Date();
@@ -36,10 +45,17 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    /**
+     * Извлекает email пользователя из токена.
+     */
     public String getUsernameFromToken(String token) {
         return parseClaims(token).getSubject();
     }
 
+    /**
+     * Проверяет токен на валидность: подпись, срок действия, формат.
+     * Возвращает false при любой ошибке вместо выброса исключения.
+     */
     public boolean validateToken(String token) {
         try {
             parseClaims(token);

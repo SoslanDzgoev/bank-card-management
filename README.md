@@ -1,105 +1,124 @@
-<h1>🚀 Разработка Системы Управления Банковскими Картами</h1>
+# Bank Card Management System
 
-<h2>📁 Стартовая структура</h2>
-  <p>
-    Проектная структура с директориями и описательными файлами (<code>README Controller.md</code>, <code>README Service.md</code> и т.д.) уже подготовлена.<br />
-    Все реализации нужно добавлять <strong>в соответствующие директории</strong>.
-  </p>
-  <p>
-    После завершения разработки <strong>временные README-файлы нужно удалить</strong>, чтобы они не попадали в итоговую сборку.
-  </p>
-  
-<h2>📝 Описание задачи</h2>
-  <p>Разработать backend-приложение на Java (Spring Boot) для управления банковскими картами:</p>
-  <ul>
-    <li>Создание и управление картами</li>
-    <li>Просмотр карт</li>
-    <li>Переводы между своими картами</li>
-  </ul>
+REST API для управления банковскими картами с аутентификацией через JWT.
 
-<h2>💳 Атрибуты карты</h2>
-  <ul>
-    <li>Номер карты (зашифрован, отображается маской: <code>**** **** **** 1234</code>)</li>
-    <li>Владелец</li>
-    <li>Срок действия</li>
-    <li>Статус: Активна, Заблокирована, Истек срок</li>
-    <li>Баланс</li>
-  </ul>
+## Технологии
 
-<h2>🧾 Требования</h2>
+- Java 17, Spring Boot 3.2
+- Spring Security + JWT
+- Spring Data JPA + Hibernate
+- PostgreSQL + Liquibase
+- Docker Compose
+- Swagger / OpenAPI
 
-<h3>✅ Аутентификация и авторизация</h3>
-  <ul>
-    <li>Spring Security + JWT</li>
-    <li>Роли: <code>ADMIN</code> и <code>USER</code></li>
-  </ul>
+## Быстрый старт
 
-<h3>✅ Возможности</h3>
-<strong>Администратор:</strong>
-  <ul>
-    <li>Создаёт, блокирует, активирует, удаляет карты</li>
-    <li>Управляет пользователями</li>
-    <li>Видит все карты</li>
-  </ul>
+### 1. Клонировать репозиторий
 
-<strong>Пользователь:</strong>
-  <ul>
-    <li>Просматривает свои карты (поиск + пагинация)</li>
-    <li>Запрашивает блокировку карты</li>
-    <li>Делает переводы между своими картами</li>
-    <li>Смотрит баланс</li>
-  </ul>
+```bash
+git clone <repo-url>
+cd bank_rest
+```
 
-<h3>✅ API</h3>
-  <ul>
-    <li>CRUD для карт</li>
-    <li>Переводы между своими картами</li>
-    <li>Фильтрация и постраничная выдача</li>
-    <li>Валидация и сообщения об ошибках</li>
-  </ul>
+### 2. Создать `.env` файл
 
-<h3>✅ Безопасность</h3>
-  <ul>
-    <li>Шифрование данных</li>
-    <li>Ролевой доступ</li>
-    <li>Маскирование номеров карт</li>
-  </ul>
+```bash
+cp .env.example .env
+```
 
-<h3>✅ Работа с БД</h3>
-  <ul>
-    <li>PostgreSQL или MySQL</li>
-    <li>Миграции через Liquibase (<code>src/main/resources/db/migration</code>)</li>
-  </ul>
+Заполни реальными значениями:
 
-<h3>✅ Документация</h3>
-  <ul>
-    <li>Swagger UI / OpenAPI — <code>docs/openapi.yaml</code></li>
-    <li><code>README.md</code> с инструкцией запуска</li>
-  </ul>
+```
+DB_HOST=localhost
+DB_PORT=5433
+DB_NAME=bankcards
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
 
-<h3>✅ Развёртывание и тестирование</h3>
-  <ul>
-    <li>Docker Compose для dev-среды</li>
-    <li>Liquibase миграции</li>
-    <li>Юнит-тесты ключевой бизнес-логики</li>
-  </ul>
+JWT_SECRET=myBankAppSuperSecretKey1234567890!!
+JWT_EXPIRATION_MS=86400000
 
-<h2>📊 Оценка</h2>
-  <ul>
-    <li>Соответствие требованиям</li>
-    <li>Чистота архитектуры и кода</li>
-    <li>Безопасность</li>
-    <li>Обработка ошибок</li>
-    <li>Покрытие тестами</li>
-    <li>ООП и уровни абстракции</li>
-  </ul>
+ENCRYPTION_KEY=1234567890abcdef1234567890abcdef
+```
 
-<h2>💡 Технологии</h2>
-  <p>
-    Java 17+, Spring Boot, Spring Security, Spring Data JPA, PostgreSQL/MySQL, Liquibase, Docker, JWT, Swagger (OpenAPI)
-  </p>
+> `JWT_SECRET` — минимум 32 символа  
+> `ENCRYPTION_KEY` — ровно 32 символа (AES-256)
 
-<h2> 📤 Формат сдачи</h2>
-<p>
-Весь код и изменения принимаются только через git-репозиторий с открытым доступом к проекту. Отправка файлов в любом виде не принимается.
-  </p>
+### 3. Запустить PostgreSQL через Docker
+
+```bash
+docker-compose up postgres -d
+```
+
+### 4. Запустить приложение
+
+```bash
+./mvnw spring-boot:run
+```
+
+Или через IntelliJ IDEA — запустить `BankCardsApplication`.
+
+### 5. Открыть Swagger UI
+
+```
+http://localhost:8080/swagger-ui.html
+```
+
+---
+
+## Дефолтный администратор
+
+| Email | Password |
+|---|---|
+| admin@bank.com | admin123 |
+
+---
+
+## API Эндпоинты
+
+### Аутентификация (публичные)
+
+| Метод | URL | Описание |
+|---|---|---|
+| POST | `/api/auth/register` | Регистрация |
+| POST | `/api/auth/login` | Логин, возвращает JWT |
+
+### Карты (ROLE_USER)
+
+| Метод | URL | Описание |
+|---|---|---|
+| GET | `/api/cards` | Мои карты (пагинация + фильтр по статусу) |
+| POST | `/api/cards/transfer` | Перевод между своими картами |
+| PATCH | `/api/cards/{id}/block` | Запрос на блокировку карты |
+
+### Администратор (ROLE_ADMIN)
+
+| Метод | URL | Описание |
+|---|---|---|
+| GET | `/api/admin/users` | Все пользователи |
+| DELETE | `/api/admin/users/{id}` | Удалить пользователя |
+| POST | `/api/admin/cards` | Создать карту |
+| GET | `/api/admin/cards` | Все карты |
+| GET | `/api/admin/cards/{id}` | Карта по ID |
+| POST | `/api/admin/cards/{id}/deposit` | Пополнить баланс |
+| PATCH | `/api/admin/cards/{id}/block` | Заблокировать карту |
+| PATCH | `/api/admin/cards/{id}/activate` | Активировать карту |
+| DELETE | `/api/admin/cards/{id}` | Удалить карту |
+
+---
+
+## Безопасность
+
+- Номера карт хранятся в зашифрованном виде (AES-256)
+- В ответах API номера карт маскируются: `**** **** **** 1234`
+- Пароли хранятся как BCrypt хеш
+- Аутентификация через JWT Bearer токен
+- Ролевой доступ: ROLE_USER и ROLE_ADMIN
+
+---
+
+## Запуск тестов
+
+```bash
+./mvnw test
+```

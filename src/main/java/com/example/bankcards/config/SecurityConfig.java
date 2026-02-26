@@ -4,7 +4,6 @@ import com.example.bankcards.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -17,9 +16,19 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/**
+ * Конфигурация Spring Security.
+ *
+ * Здесь задаются правила безопасности всего приложения:
+ * - отключён CSRF (не нужен для stateless REST API с JWT)
+ * - сессии отключены (STATELESS) — сервер не хранит состояние пользователя
+ * - роли и доступ к URL
+ * - JWT фильтр добавлен в цепочку до стандартного фильтра Spring Security
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -32,15 +41,23 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
+                // CSRF не нужен: токен JWT не хранится в cookie и не отправляется браузером автоматически
                 .csrf(AbstractHttpConfigurer::disable)
+                // Сессии не используются: каждый запрос аутентифицируется заново через JWT
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/api-docs/**", "/swagger-ui.html").permitAll()
+                        // Все /api/admin/** эндпоинты доступны только администраторам
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
                         .anyRequest().authenticated()
                 )
+                .exceptionHandling(ex -> ex
+                        // Возвращаем 401 вместо стандартного 403 для неаутентифицированных запросов
+                        .authenticationEntryPoint(authenticationEntryPoint())
+                )
                 .authenticationProvider(authenticationProvider())
+                // JWT фильтр запускается до UsernamePasswordAuthenticationFilter
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
@@ -56,6 +73,19 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
+    }
+
+    /**
+     * Обработчик неаутентифицированных запросов.
+     * По умолчанию Spring Security отдаёт 403, но стандарт — 401 Unauthorized.
+     */
+    @Bean
+    public AuthenticationEntryPoint authenticationEntryPoint() {
+        return (request, response, authException) -> {
+            response.setStatus(401);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"status\":401,\"message\":\"Не авторизован\"}");
+        };
     }
 
     @Bean

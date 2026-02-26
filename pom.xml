@@ -93,6 +93,13 @@
             <version>2.5.0</version>
         </dependency>
 
+        <!-- dotenv: автоматическое чтение .env файла в Spring Boot -->
+        <dependency>
+            <groupId>me.paulschwarz</groupId>
+            <artifactId>spring-dotenv</artifactId>
+            <version>4.0.0</version>
+        </dependency>
+
         <!-- Lombok: генерация геттеров, сеттеров, конструкторов -->
         <dependency>
             <groupId>org.projectlombok</groupId>

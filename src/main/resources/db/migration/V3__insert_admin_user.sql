@@ -1,5 +1,5 @@
 -- Пароль: admin123 (BCrypt хеш)
 INSERT INTO users (email, password, role)
 VALUES ('admin@bank.com',
-        '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.',
+        '$2y$10$CmqX.X09TZvzRxdku81P4.HU1QFGsfRQSDEnEiUx8/AcD7RFtJD72',
         'ROLE_ADMIN');

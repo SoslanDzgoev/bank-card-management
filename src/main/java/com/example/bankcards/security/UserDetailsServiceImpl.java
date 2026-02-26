@@ -12,6 +12,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * Реализация UserDetailsService для Spring Security.
+ *
+ * Spring Security вызывает loadUserByUsername при каждой аутентификации
+ * (в нашем случае — при обработке JWT токена в фильтре).
+ * Метод загружает пользователя из БД и оборачивает его в UserDetails
+ * с его ролью в виде GrantedAuthority.
+ */
 @Service
 @RequiredArgsConstructor
 public class UserDetailsServiceImpl implements UserDetailsService {
@@ -22,8 +30,9 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
+                .orElseThrow(() -> new UsernameNotFoundException("Пользователь не найден: " + email));
 
+        // Роль передаётся как GrantedAuthority — именно по ней работает hasAuthority() в SecurityConfig
         return new org.springframework.security.core.userdetails.User(
                 user.getEmail(),
                 user.getPassword(),

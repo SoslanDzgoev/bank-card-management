@@ -37,4 +37,8 @@ public class Card {
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal balance;
+
+    @Version
+    @Column(nullable = false)
+    private Long version;
 }

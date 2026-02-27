@@ -9,6 +9,7 @@ import com.example.bankcards.entity.User;
 import com.example.bankcards.exception.CardBlockedException;
 import com.example.bankcards.exception.InsufficientFundsException;
 import com.example.bankcards.exception.ResourceNotFoundException;
+import com.example.bankcards.exception.SameCardTransferException;
 import com.example.bankcards.repository.CardRepository;
 import com.example.bankcards.repository.UserRepository;
 import com.example.bankcards.util.CardEncryptionUtil;
@@ -20,11 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
-/**
- * Сервис управления банковскими картами.
- * Содержит всю бизнес-логику: создание, блокировка, активация,
- * просмотр баланса и переводы между картами.
- */
 @Service
 @RequiredArgsConstructor
 public class CardService {
@@ -127,10 +123,9 @@ public class CardService {
 
     @Transactional
     public void deleteCard(Long cardId) {
-        if (!cardRepository.existsById(cardId)) {
-            throw new ResourceNotFoundException("Карта не найдена: " + cardId);
-        }
-        cardRepository.deleteById(cardId);
+        Card card = cardRepository.findById(cardId)
+                .orElseThrow(() -> new ResourceNotFoundException("Карта не найдена: " + cardId));
+        cardRepository.delete(card);
     }
 
     /**
@@ -148,7 +143,7 @@ public class CardService {
     @Transactional
     public void transfer(TransferRequest request, User currentUser) {
         if (request.getFromCardId().equals(request.getToCardId())) {
-            throw new IllegalArgumentException("Нельзя переводить на ту же карту");
+            throw new SameCardTransferException("Нельзя переводить на ту же карту");
         }
 
         Card fromCard = cardRepository.findByIdAndOwner(request.getFromCardId(), currentUser)

@@ -53,6 +53,11 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.FORBIDDEN, "Доступ запрещён");
     }
 
+    @ExceptionHandler(SameCardTransferException.class)
+    public ResponseEntity<ErrorResponse> handleSameCardTransfer(SameCardTransferException ex) {
+        return buildResponse(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());

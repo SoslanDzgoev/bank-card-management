@@ -8,6 +8,7 @@ import com.example.bankcards.entity.User;
 import com.example.bankcards.exception.CardBlockedException;
 import com.example.bankcards.exception.InsufficientFundsException;
 import com.example.bankcards.exception.ResourceNotFoundException;
+import com.example.bankcards.exception.SameCardTransferException;
 import com.example.bankcards.repository.CardRepository;
 import com.example.bankcards.repository.UserRepository;
 import com.example.bankcards.util.CardEncryptionUtil;
@@ -160,7 +161,7 @@ class CardServiceTest {
         request.setAmount(new BigDecimal("100.00"));
 
         assertThatThrownBy(() -> cardService.transfer(request, owner))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(SameCardTransferException.class)
                 .hasMessage("Нельзя переводить на ту же карту");
 
         verify(cardRepository, never()).findByIdAndOwner(any(), any());

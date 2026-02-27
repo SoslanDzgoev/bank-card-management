@@ -5,6 +5,7 @@ CREATE TABLE cards (
     expiry_date           DATE            NOT NULL,
     status                VARCHAR(50)     NOT NULL,
     balance               NUMERIC(19, 2)  NOT NULL DEFAULT 0.00,
+    version               BIGINT          NOT NULL DEFAULT 0,
 
     CONSTRAINT fk_cards_user FOREIGN KEY (user_id) REFERENCES users(id)
 );

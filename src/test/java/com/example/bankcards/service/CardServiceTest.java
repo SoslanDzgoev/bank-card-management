@@ -1,5 +1,7 @@
 package com.example.bankcards.service;
 
+import com.example.bankcards.dto.CardResponse;
+import com.example.bankcards.dto.CreateCardRequest;
 import com.example.bankcards.dto.TransferRequest;
 import com.example.bankcards.entity.Card;
 import com.example.bankcards.entity.CardStatus;
@@ -14,6 +16,7 @@ import com.example.bankcards.repository.UserRepository;
 import com.example.bankcards.util.CardEncryptionUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -179,5 +182,147 @@ class CardServiceTest {
 
         assertThatThrownBy(() -> cardService.transfer(request, owner))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Nested
+    @DisplayName("createCard()")
+    class CreateCardTests {
+
+        @Test
+        @DisplayName("Успешное создание карты — начальный баланс 0, статус ACTIVE")
+        void createCard_success() {
+            CreateCardRequest request = new CreateCardRequest();
+            request.setCardNumber("1234567890123456");
+            request.setOwnerId(1L);
+            request.setExpiryDate(LocalDate.of(2028, 12, 31));
+
+            when(userRepository.findById(1L)).thenReturn(Optional.of(owner));
+            when(encryptionUtil.encrypt("1234567890123456")).thenReturn("encrypted");
+            when(encryptionUtil.decrypt("encrypted")).thenReturn("1234567890123456");
+            when(encryptionUtil.mask("1234567890123456")).thenReturn("**** **** **** 3456");
+            when(cardRepository.save(any(Card.class))).thenAnswer(inv -> {
+                Card c = inv.getArgument(0);
+                c.setId(10L);
+                return c;
+            });
+
+            CardResponse response = cardService.createCard(request);
+
+            assertThat(response.getBalance()).isEqualByComparingTo(BigDecimal.ZERO);
+            assertThat(response.getStatus()).isEqualTo(CardStatus.ACTIVE);
+            assertThat(response.getMaskedCardNumber()).isEqualTo("**** **** **** 3456");
+            verify(cardRepository).save(any(Card.class));
+        }
+
+        @Test
+        @DisplayName("Создание карты для несуществующего пользователя — ошибка 404")
+        void createCard_ownerNotFound_throwsException() {
+            CreateCardRequest request = new CreateCardRequest();
+            request.setCardNumber("1234567890123456");
+            request.setOwnerId(99L);
+            request.setExpiryDate(LocalDate.of(2028, 12, 31));
+
+            when(userRepository.findById(99L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> cardService.createCard(request))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("99");
+
+            verify(cardRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("deposit()")
+    class DepositTests {
+
+        @Test
+        @DisplayName("Успешное пополнение активной карты")
+        void deposit_success() {
+            when(cardRepository.findById(1L)).thenReturn(Optional.of(fromCard));
+            when(encryptionUtil.decrypt("encrypted_1234")).thenReturn("1234567890123456");
+            when(encryptionUtil.mask("1234567890123456")).thenReturn("**** **** **** 3456");
+            when(cardRepository.save(any(Card.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            CardResponse response = cardService.deposit(1L, new BigDecimal("500.00"));
+
+            assertThat(response.getBalance()).isEqualByComparingTo("1500.00");
+        }
+
+        @Test
+        @DisplayName("Пополнение заблокированной карты — ошибка")
+        void deposit_blockedCard_throwsException() {
+            fromCard.setStatus(CardStatus.BLOCKED);
+            when(cardRepository.findById(1L)).thenReturn(Optional.of(fromCard));
+
+            assertThatThrownBy(() -> cardService.deposit(1L, new BigDecimal("500.00")))
+                    .isInstanceOf(CardBlockedException.class)
+                    .hasMessageContaining("не активна");
+
+            verify(cardRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Пополнение несуществующей карты — ошибка 404")
+        void deposit_cardNotFound_throwsException() {
+            when(cardRepository.findById(99L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> cardService.deposit(99L, new BigDecimal("100.00")))
+                    .isInstanceOf(ResourceNotFoundException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("requestBlock()")
+    class RequestBlockTests {
+
+        @Test
+        @DisplayName("Успешный запрос блокировки владельцем карты")
+        void requestBlock_success() {
+            when(cardRepository.findByIdAndOwner(1L, owner)).thenReturn(Optional.of(fromCard));
+
+            cardService.requestBlock(1L, owner);
+
+            assertThat(fromCard.getStatus()).isEqualTo(CardStatus.BLOCKED);
+            verify(cardRepository).save(fromCard);
+        }
+
+        @Test
+        @DisplayName("Запрос блокировки чужой карты — ошибка 404 (IDOR защита)")
+        void requestBlock_otherUserCard_throwsException() {
+            when(cardRepository.findByIdAndOwner(1L, owner)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> cardService.requestBlock(1L, owner))
+                    .isInstanceOf(ResourceNotFoundException.class);
+
+            verify(cardRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("deleteCard()")
+    class DeleteCardTests {
+
+        @Test
+        @DisplayName("Успешное удаление карты")
+        void deleteCard_success() {
+            when(cardRepository.findById(1L)).thenReturn(Optional.of(fromCard));
+
+            cardService.deleteCard(1L);
+
+            verify(cardRepository).delete(fromCard);
+        }
+
+        @Test
+        @DisplayName("Удаление несуществующей карты — ошибка 404")
+        void deleteCard_notFound_throwsException() {
+            when(cardRepository.findById(99L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> cardService.deleteCard(99L))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("99");
+
+            verify(cardRepository, never()).delete(any());
+        }
     }
 }

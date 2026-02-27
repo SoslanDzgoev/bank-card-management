@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,8 +62,10 @@ public class AuthService {
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
 
-        User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
+        // Данные пользователя уже загружены AuthenticationManager — лишний DB-запрос не нужен
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String role = userDetails.getAuthorities().iterator().next().getAuthority();
         String token = tokenProvider.generateToken(authentication);
-        return new AuthResponse(token, user.getEmail(), user.getRole().name());
+        return new AuthResponse(token, userDetails.getUsername(), role);
     }
 }

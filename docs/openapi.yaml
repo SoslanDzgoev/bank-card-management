@@ -1,8 +1,8 @@
-openapi: 3.0.3
+openapi: 3.0.1
 info:
   title: Bank Card Management API
-  description: REST API for managing bank cards, users, and fund transfers
-  version: 1.0.0
+  description: REST API for managing bank cards
+  version: "1.0"
 
 servers:
   - url: http://localhost:8080
@@ -11,7 +11,548 @@ servers:
 security:
   - bearerAuth: []
 
+tags:
+  - name: Authentication
+    description: Register and login endpoints
+  - name: Cards
+    description: User card operations
+  - name: Admin
+    description: Admin-only operations
+
+paths:
+
+  /api/auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+            example:
+              email: user@bank.com
+              password: secret123
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /api/auth/login:
+    post:
+      tags: [Authentication]
+      summary: Login and get JWT token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+            example:
+              email: user@bank.com
+              password: secret123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/cards:
+    get:
+      tags: [Cards]
+      summary: Get my cards with optional status filter and pagination
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/CardStatus'
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            example: id,asc
+      responses:
+        '200':
+          description: Paginated list of user's cards
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageCardResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/cards/transfer:
+    post:
+      tags: [Cards]
+      summary: Transfer funds between my cards
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferRequest'
+            example:
+              fromCardId: 1
+              toCardId: 2
+              amount: "500.00"
+      responses:
+        '200':
+          description: Transfer completed successfully
+        '400':
+          description: Insufficient funds or card not active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Card not found (or does not belong to user)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Concurrent modification conflict — retry the request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Source and target card are the same
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/cards/{id}/block:
+    patch:
+      tags: [Cards]
+      summary: Request to block my card
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Block request submitted
+        '404':
+          description: Card not found (or does not belong to user)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/users:
+    get:
+      tags: [Admin]
+      summary: Get all users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Paginated list of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageUserResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/users/{id}:
+    get:
+      tags: [Admin]
+      summary: Get user by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [Admin]
+      summary: Delete user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: User deleted
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/cards:
+    post:
+      tags: [Admin]
+      summary: Create a new card for user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCardRequest'
+            example:
+              cardNumber: "1234567890123456"
+              ownerId: 2
+              expiryDate: "2028-12-31"
+      responses:
+        '201':
+          description: Card created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+        '404':
+          description: Owner user not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags: [Admin]
+      summary: Get all cards
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Paginated list of all cards
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageCardResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/cards/{id}:
+    get:
+      tags: [Admin]
+      summary: Get card by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Card found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+        '404':
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [Admin]
+      summary: Delete a card
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Card deleted
+        '404':
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/cards/{id}/deposit:
+    post:
+      tags: [Admin]
+      summary: Deposit funds to a card
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepositRequest'
+            example:
+              amount: "1000.00"
+      responses:
+        '200':
+          description: Deposit successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+        '400':
+          description: Card is not active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/cards/{id}/block:
+    patch:
+      tags: [Admin]
+      summary: Block a card
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Card blocked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+        '404':
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/cards/{id}/activate:
+    patch:
+      tags: [Admin]
+      summary: Activate a card
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Card activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+        '404':
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
+
   securitySchemes:
     bearerAuth:
       type: http
@@ -19,6 +560,7 @@ components:
       bearerFormat: JWT
 
   schemas:
+
     AuthRequest:
       type: object
       required: [email, password]
@@ -29,6 +571,7 @@ components:
           example: user@bank.com
         password:
           type: string
+          minLength: 8
           example: secret123
 
     AuthResponse:
@@ -43,6 +586,49 @@ components:
         role:
           type: string
           example: ROLE_USER
+
+    CreateCardRequest:
+      type: object
+      required: [cardNumber, ownerId, expiryDate]
+      properties:
+        cardNumber:
+          type: string
+          pattern: '^\d{16}$'
+          example: "1234567890123456"
+        ownerId:
+          type: integer
+          format: int64
+          example: 2
+        expiryDate:
+          type: string
+          format: date
+          example: "2028-12-31"
+
+    DepositRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: number
+          minimum: 0.01
+          example: 1000.00
+
+    TransferRequest:
+      type: object
+      required: [fromCardId, toCardId, amount]
+      properties:
+        fromCardId:
+          type: integer
+          format: int64
+          example: 1
+        toCardId:
+          type: integer
+          format: int64
+          example: 2
+        amount:
+          type: number
+          minimum: 0.01
+          example: 500.00
 
     CardResponse:
       type: object
@@ -62,58 +648,10 @@ components:
           format: date
           example: "2028-12-31"
         status:
-          type: string
-          enum: [ACTIVE, BLOCKED, EXPIRED]
-          example: ACTIVE
+          $ref: '#/components/schemas/CardStatus'
         balance:
           type: number
-          format: decimal
-          example: 1000.00
-
-    CreateCardRequest:
-      type: object
-      required: [cardNumber, ownerId, expiryDate]
-      properties:
-        cardNumber:
-          type: string
-          pattern: '^\d{16}$'
-          example: "4111111111111111"
-        ownerId:
-          type: integer
-          format: int64
-          example: 1
-        expiryDate:
-          type: string
-          format: date
-          example: "2028-12-31"
-
-    TransferRequest:
-      type: object
-      required: [fromCardId, toCardId, amount]
-      properties:
-        fromCardId:
-          type: integer
-          format: int64
-          example: 1
-        toCardId:
-          type: integer
-          format: int64
-          example: 2
-        amount:
-          type: number
-          format: decimal
-          minimum: 0.01
-          example: 500.00
-
-    DepositRequest:
-      type: object
-      required: [amount]
-      properties:
-        amount:
-          type: number
-          format: decimal
-          minimum: 0.01
-          example: 1000.00
+          example: 1500.00
 
     UserResponse:
       type: object
@@ -129,368 +667,76 @@ components:
           type: string
           example: ROLE_USER
 
+    CardStatus:
+      type: string
+      enum: [ACTIVE, BLOCKED, EXPIRED]
+
     ErrorResponse:
       type: object
       properties:
         timestamp:
           type: string
-          example: "2025-01-01T12:00:00"
+          example: "2026-03-02T12:00:00"
+        status:
+          type: integer
+          example: 404
+        message:
+          type: string
+          example: "Карта не найдена: 99"
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          example: "2026-03-02T12:00:00"
         status:
           type: integer
           example: 400
-        message:
-          type: string
-          example: "Недостаточно средств на карте"
-
-paths:
-  /api/auth/register:
-    post:
-      tags: [Authentication]
-      summary: Register a new user
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AuthRequest'
-      responses:
-        '201':
-          description: User registered successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '409':
-          description: Email already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/auth/login:
-    post:
-      tags: [Authentication]
-      summary: Login and get JWT token
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AuthRequest'
-      responses:
-        '200':
-          description: Login successful
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '401':
-          description: Invalid credentials
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/cards:
-    get:
-      tags: [Cards]
-      summary: Get my cards with optional status filter and pagination
-      parameters:
-        - name: status
-          in: query
-          required: false
-          schema:
+        errors:
+          type: object
+          additionalProperties:
             type: string
-            enum: [ACTIVE, BLOCKED, EXPIRED]
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 0
-        - name: size
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 10
-      responses:
-        '200':
-          description: List of user's cards
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  content:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/CardResponse'
-                  totalElements:
-                    type: integer
-                  totalPages:
-                    type: integer
-        '401':
-          description: Unauthorized
+          example:
+            email: "must be a well-formed email address"
+            password: "size must be between 8 and 2147483647"
 
-  /api/cards/transfer:
-    post:
-      tags: [Cards]
-      summary: Transfer funds between my cards
-      requestBody:
-        required: true
+    PageCardResponse:
+      type: object
+      properties:
         content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TransferRequest'
-      responses:
-        '200':
-          description: Transfer successful
-        '400':
-          description: Insufficient funds or card not active
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '422':
-          description: Same card transfer attempt
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          type: array
+          items:
+            $ref: '#/components/schemas/CardResponse'
+        totalElements:
+          type: integer
+          example: 5
+        totalPages:
+          type: integer
+          example: 1
+        size:
+          type: integer
+          example: 10
+        number:
+          type: integer
+          example: 0
 
-  /api/cards/{id}/block:
-    patch:
-      tags: [Cards]
-      summary: Request to block my card
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      responses:
-        '200':
-          description: Block request submitted
-        '404':
-          description: Card not found
-
-  /api/admin/users:
-    get:
-      tags: [Admin]
-      summary: Get all users (paginated)
-      parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 0
-        - name: size
-          in: query
-          schema:
-            type: integer
-            default: 10
-      responses:
-        '200':
-          description: List of users
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  content:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/UserResponse'
-        '403':
-          description: Access denied
-
-  /api/admin/users/{id}:
-    get:
-      tags: [Admin]
-      summary: Get user by ID
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      responses:
-        '200':
-          description: User found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserResponse'
-        '404':
-          description: User not found
-    delete:
-      tags: [Admin]
-      summary: Delete user
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      responses:
-        '204':
-          description: User deleted
-        '404':
-          description: User not found
-
-  /api/admin/cards:
-    post:
-      tags: [Admin]
-      summary: Create a new card for user
-      requestBody:
-        required: true
+    PageUserResponse:
+      type: object
+      properties:
         content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateCardRequest'
-      responses:
-        '201':
-          description: Card created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CardResponse'
-        '404':
-          description: Owner not found
-    get:
-      tags: [Admin]
-      summary: Get all cards (paginated)
-      parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 0
-        - name: size
-          in: query
-          schema:
-            type: integer
-            default: 10
-      responses:
-        '200':
-          description: List of all cards
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  content:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/CardResponse'
-
-  /api/admin/cards/{id}:
-    get:
-      tags: [Admin]
-      summary: Get card by ID
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      responses:
-        '200':
-          description: Card found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CardResponse'
-        '404':
-          description: Card not found
-    delete:
-      tags: [Admin]
-      summary: Delete card
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      responses:
-        '204':
-          description: Card deleted
-        '404':
-          description: Card not found
-
-  /api/admin/cards/{id}/deposit:
-    post:
-      tags: [Admin]
-      summary: Deposit funds to a card
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DepositRequest'
-      responses:
-        '200':
-          description: Deposit successful
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CardResponse'
-        '400':
-          description: Card is not active
-
-  /api/admin/cards/{id}/block:
-    patch:
-      tags: [Admin]
-      summary: Block a card
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      responses:
-        '200':
-          description: Card blocked
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CardResponse'
-        '404':
-          description: Card not found
-
-  /api/admin/cards/{id}/activate:
-    patch:
-      tags: [Admin]
-      summary: Activate a card
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      responses:
-        '200':
-          description: Card activated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CardResponse'
-        '404':
-          description: Card not found
+          type: array
+          items:
+            $ref: '#/components/schemas/UserResponse'
+        totalElements:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        size:
+          type: integer
+          example: 10
+        number:
+          type: integer
+          example: 0

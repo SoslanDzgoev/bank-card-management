@@ -26,39 +26,15 @@ cd bank_rest
 cp .env.example .env
 ```
 
-Заполни реальными значениями:
-
-```
-DB_HOST=localhost
-DB_PORT=5433
-DB_NAME=bankcards
-DB_USERNAME=postgres
-DB_PASSWORD=postgres
-
-JWT_SECRET=myBankAppSuperSecretKey1234567890!!
-JWT_EXPIRATION_MS=86400000
-
-ENCRYPTION_KEY=1234567890abcdef1234567890abcdef
-```
-
-> `JWT_SECRET` — минимум 32 символа  
-> `ENCRYPTION_KEY` — ровно 32 символа (AES-256)
-
-### 3. Запустить PostgreSQL через Docker
+### 3. Запустить приложение
 
 ```bash
-docker-compose up postgres -d
+docker-compose up --build
 ```
 
-### 4. Запустить приложение
+Команда запускает PostgreSQL и приложение вместе. При первом запуске скачиваются Docker-образы и зависимости — это займёт несколько минут.
 
-```bash
-./mvnw spring-boot:run
-```
-
-Или через IntelliJ IDEA — запустить `BankCardsApplication`.
-
-### 5. Открыть Swagger UI
+### 4. Открыть Swagger UI
 
 ```
 http://localhost:8080/swagger-ui.html
@@ -96,6 +72,7 @@ http://localhost:8080/swagger-ui.html
 | Метод | URL | Описание |
 |---|---|---|
 | GET | `/api/admin/users` | Все пользователи |
+| GET | `/api/admin/users/{id}` | Пользователь по ID |
 | DELETE | `/api/admin/users/{id}` | Удалить пользователя |
 | POST | `/api/admin/cards` | Создать карту |
 | GET | `/api/admin/cards` | Все карты |
@@ -109,16 +86,23 @@ http://localhost:8080/swagger-ui.html
 
 ## Безопасность
 
-- Номера карт хранятся в зашифрованном виде (AES-256)
+- Номера карт хранятся в зашифрованном виде (AES-256-GCM)
 - В ответах API номера карт маскируются: `**** **** **** 1234`
 - Пароли хранятся как BCrypt хеш
 - Аутентификация через JWT Bearer токен
 - Ролевой доступ: ROLE_USER и ROLE_ADMIN
+- Защита от IDOR атак
 
 ---
 
 ## Запуск тестов
 
 ```bash
-./mvnw test
+JAVA_HOME=~/Library/Java/JavaVirtualMachines/ms-17.0.15/Contents/Home mvn clean test
+```
+
+Или если `JAVA_HOME` уже настроен:
+
+```bash
+mvn clean test
 ```

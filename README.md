@@ -16,8 +16,8 @@ REST API для управления банковскими картами с а
 ### 1. Клонировать репозиторий
 
 ```bash
-git clone <repo-url>
-cd bank_rest
+git clone https://github.com/SoslanDzgoev/bank-card-management.git
+cd bank-card-management
 ```
 
 ### 2. Создать `.env` файл

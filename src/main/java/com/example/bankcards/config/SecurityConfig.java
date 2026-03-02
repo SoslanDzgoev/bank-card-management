@@ -53,8 +53,14 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
-                        // Возвращаем 401 вместо стандартного 403 для неаутентифицированных запросов
+                        // Возвращаем 401 для неаутентифицированных запросов
                         .authenticationEntryPoint(authenticationEntryPoint())
+                        // Возвращаем 403 для аутентифицированных пользователей без нужной роли
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setStatus(403);
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.getWriter().write("{\"status\":403,\"message\":\"Доступ запрещён\"}");
+                        })
                 )
                 .authenticationProvider(authenticationProvider())
                 // JWT фильтр запускается до UsernamePasswordAuthenticationFilter
